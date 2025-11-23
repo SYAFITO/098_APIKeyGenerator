@@ -1,145 +1,220 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"/>
-</head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"/>
+    <style>
+        /* Gaya dasar untuk menyembunyikan/menampilkan dashboard */
+        #dashboard { display: none; }
+        #loginPage { display: block; }
+        .pointer { cursor: pointer; }
 
-<style>
-  #dashboard { display: none; }
-  #loginPage { display: block; }
-  .pointer { cursor: pointer; }
-</style>
+        /* Gaya tambahan */
+        body { background: #f0f2f5; }
+        .card { border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .table-dark th { font-weight: 600; }
+    </style>
+</head>
 
 <body>
 
-<!-- =================== LOGIN =================== -->
-<div id="loginPage" class="container d-flex justify-content-center mt-5">
-  <div class="card p-4 shadow" style="width: 400px; border-radius: 15px;">
-    <h3 class="text-center mb-3">Admin Login</h3>
+<div id="loginPage" class="container d-flex justify-content-center align-items-center" style="min-height: 100vh;">
+    <div class="card p-4 shadow" style="width: 400px;">
+        <h3 class="text-center mb-4">Admin Login</h3>
 
-    <input id="email" class="form-control mb-2" placeholder="Email">
-    <input id="password" type="password" class="form-control mb-3" placeholder="Password">
+        <div id="alertMessage" class="alert alert-danger" style="display: none;"></div>
 
-    <button onclick="loginAdmin()" class="btn btn-primary w-100">Login</button>
-  </div>
+        <input id="email" class="form-control mb-2" placeholder="Email" required>
+        <input id="password" type="password" class="form-control mb-3" placeholder="Password" required>
+
+        <button onclick="loginAdmin()" class="btn btn-primary w-100 mb-3">Login</button>
+        
+        <p class="text-center">Belum punya akun? 
+            <a href="#" onclick="showRegisterPrompt()">Register Admin</a>
+        </p>
+    </div>
 </div>
 
-<!-- =================== DASHBOARD =================== -->
 <div id="dashboard" class="container mt-5">
-  <div class="d-flex justify-content-between mb-3">
-    <h3>Dashboard API Key</h3>
-    <button class="btn btn-danger" onclick="logout()">Logout</button>
-  </div>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Dashboard API Key</h3>
+        <button class="btn btn-danger" onclick="logout()">Logout</button>
+    </div>
 
-  <table class="table table-bordered table-striped">
-    <thead class="table-dark">
-      <tr>
-        <th>ID</th>
-        <th>API Key</th>
-        <th>Expires At</th>
-        <th>Status</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody id="apikey-table"></tbody>
-  </table>
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>API Key</th>
+                    <th>User</th>
+                    <th>Expires At</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="apikey-table"></tbody>
+        </table>
+    </div>
 </div>
 
 <script>
+// =================== LOGIC REGISTER ADMIN (Menggunakan Alert Sederhana) ===================
+// Karena tidak ada file register.html, kita akan meminta input via prompt dan mengirim ke API register
+async function showRegisterPrompt() {
+    const email = prompt("Masukkan Email Admin Baru:");
+    if (!email) return;
+
+    const password = prompt("Masukkan Password Admin Baru:");
+    if (!password) return;
+
+    const res = await fetch("/admin/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+    });
+    const response = await res.json();
+    alert(response.msg);
+}
+
 // =================== LOGIN ===================
 async function loginAdmin() {
-  const res = await fetch("/admin/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: document.getElementById("email").value,
-      password: document.getElementById("password").value
-    })
-  });
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    const alertBox = document.getElementById("alertMessage");
 
-  const response = await res.json();
-  alert(response.msg);
+    alertBox.style.display = 'none';
 
-  if (!response.error) {
+    if (!email || !password) {
+        alertBox.textContent = "Email dan Password wajib diisi.";
+        alertBox.style.display = 'block';
+        return;
+    }
 
-    // HIDE LOGIN PAGE TOTAL
-    const loginPage = document.getElementById("loginPage");
-    loginPage.style.display = "none";
-    loginPage.innerHTML = ""; // <--- INI AGAR LOGIN HILANG SELURUHNYA
+    try {
+        const res = await fetch("/admin/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
+        
+        const response = await res.json();
 
-    // SHOW DASHBOARD
-    document.getElementById("dashboard").style.display = "block";
-
-    // LOAD DATA
-    await loadApiKeys();
-  }
+        if (response.error) {
+            alertBox.textContent = response.msg;
+            alertBox.style.display = 'block';
+        } else {
+            // HIDE LOGIN PAGE
+            document.getElementById("loginPage").style.display = "none";
+            // SHOW DASHBOARD
+            document.getElementById("dashboard").style.display = "block";
+            // LOAD DATA
+            await loadApiKeys();
+        }
+    } catch (error) {
+        alertBox.textContent = "Error koneksi server.";
+        alertBox.style.display = 'block';
+    }
 }
 
 // =================== LOAD DATA API KEY ===================
 async function loadApiKeys() {
-  const res = await fetch("/apikeys");
-  const data = await res.json();
+    const res = await fetch("/apikeys");
+    const data = await res.json();
 
-  const table = document.getElementById("apikey-table");
-  table.innerHTML = "";
+    const table = document.getElementById("apikey-table");
+    table.innerHTML = "";
+    
+    // Penanganan error jika sesi hilang saat fetch data
+    if (data.error && data.msg === "Belum login") {
+        alert("Sesi habis. Silakan login kembali.");
+        location.reload();
+        return;
+    }
+    
+    data.data.forEach(row => {
+        // Format Tanggal Expires At
+        const expiryDate = row.expires_at ? new Date(row.expires_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
+        
+        // Menampilkan nama user (gabungkan first dan last name)
+        const userName = row.first_name ? `${row.first_name} ${row.last_name || ''} (${row.email})` : 'N/A';
 
-  data.data.forEach(row => {
-    table.innerHTML += `
-      <tr>
-        <td>${row.id}</td>
-        <td>${row.apikey}</td>
-        <td>${row.expires_at}</td>
-        <td>
-            <select id="status-${row.id}" class="form-select">
-                <option value="active" ${row.status === "active" ? "selected" : ""}>Active</option>
-                <option value="inactive" ${row.status === "inactive" ? "selected" : ""}>Inactive</option>
-            </select>
-        </td>
-        <td>
-            <button class="btn btn-success btn-sm" onclick="saveStatus(${row.id})">Save</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteKey(${row.id})">Delete</button>
-        </td>
-      </tr>
-    `;
-  });
+        table.innerHTML += `
+            <tr>
+                <td>${row.id}</td>
+                <td>${row.apikey}</td>
+                <td>${userName}</td> 
+                <td>${expiryDate}</td>
+                <td>
+                    <select id="status-${row.id}" class="form-select form-select-sm">
+                        <option value="active" ${row.status === "active" ? "selected" : ""}>Active</option>
+                        <option value="inactive" ${row.status === "inactive" ? "selected" : ""}>Inactive</option>
+                        <option value="revoked" ${row.status === "revoked" ? "selected" : ""}>Revoked</option>
+                    </select>
+                </td>
+                <td>
+                    <button class="btn btn-success btn-sm me-1" onclick="saveStatus(${row.id})">Save</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteKey(${row.id})">Delete</button>
+                </td>
+            </tr>
+        `;
+    });
 }
 
 // =================== UPDATE STATUS ===================
 async function saveStatus(id) {
-  const status = document.getElementById(`status-${id}`).value;
+    const status = document.getElementById(`status-${id}`).value;
 
-  const res = await fetch("/apikey/update", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, status })
-  });
+    const res = await fetch("/apikey/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status })
+    });
 
-  const response = await res.json();
-  alert(response.msg);
+    const response = await res.json();
+    alert(response.msg);
+    // Tidak perlu reloadKeys karena status sudah di-update di table
 }
 
 // =================== DELETE API KEY ===================
 async function deleteKey(id) {
-  if (!confirm("Yakin ingin menghapus?")) return;
+    if (!confirm("Yakin ingin menghapus?")) return;
 
-  const res = await fetch("/apikey/delete", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id })
-  });
+    const res = await fetch("/apikey/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id })
+    });
 
-  const response = await res.json();
-  alert(response.msg);
-  loadApiKeys();
+    const response = await res.json();
+    alert(response.msg);
+    loadApiKeys(); // Muat ulang data setelah penghapusan
 }
 
 // =================== LOGOUT ===================
-function logout() {
-  location.reload();
+async function logout() {
+    const res = await fetch("/admin/logout");
+    const response = await res.json();
+    alert(response.msg);
+    location.reload(); // Muat ulang halaman untuk kembali ke login
 }
-</script>
 
+// =================== INIT CHECK ===================
+// Coba memuat data saat halaman dimuat (jika sesi masih aktif)
+document.addEventListener('DOMContentLoaded', async () => {
+    const res = await fetch("/apikeys");
+    const data = await res.json();
+
+    if (!data.error) {
+        // Jika berhasil mendapatkan data (berarti sesi aktif)
+        document.getElementById("loginPage").style.display = "none";
+        document.getElementById("dashboard").style.display = "block";
+        loadApiKeys();
+    }
+});
+
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
