@@ -18,3 +18,18 @@ app.use(
   })
 );
 
+// ============================
+// DATABASE CONNECTION
+// ============================
+const db = mysql.createConnection({
+  host: "localhost",
+  user: "root",
+  password: "Bismillah123",
+  database: "update_db",
+  port: 3307,
+});
+
+db.connect((err) => {
+  if (err) throw err;
+  console.log("MySQL Connected!");
+});
