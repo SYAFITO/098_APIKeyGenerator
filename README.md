@@ -6,4 +6,6 @@ Database Users
 <img width="1366" height="727" alt="image" src="https://github.com/user-attachments/assets/ce29f226-a7fe-41ca-b8e4-cc1ee6bc4a97" />
 Database apikeys
 <img width="1364" height="730" alt="image" src="https://github.com/user-attachments/assets/99cf3b80-948f-46db-9ab9-f195190b7870" />
+Database admins
+<img width="1366" height="727" alt="image" src="https://github.com/user-attachments/assets/4b99433d-de3b-425f-abeb-9a58a50c43c5" />
 
