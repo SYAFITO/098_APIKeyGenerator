@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate API Key</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            background: #f0f2f5; 
+            font-family: 'Poppins', sans-serif; 
+        }
+        .card { 
+            border-radius: 15px; 
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); 
+            max-width: 450px; 
+            width: 90%;
+        }
+        .btn-primary {
+            background-color: #3B71CA; /* Biru yang lebih dalam */
+            border-color: #3B71CA;
+            font-weight: 600;
+        }
+        .btn-success {
+            background-color: #14A44D; /* Hijau yang lebih solid */
+            border-color: #14A44D;
+            font-weight: 600;
+        }
+        .form-control:read-only {
+            background-color: #e9ecef; /* Latar belakang abu-abu untuk input readonly */
+            font-weight: 600;
+            color: #333;
+        }
+        .alert-fixed {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+        }
+    </style>
+</head>
+<body>
+
+<div id="alertContainer"></div>
+
+<div class="container d-flex justify-content-center mt-5">
+    <div class="card p-5 shadow" style="width: 450px;">
+        <h3 class="text-center mb-4 fw-bold text-primary">🔐 API Key Generator</h3>
+
+        <div class="mb-3">
+            <label for="first" class="form-label">Nama Depan <span class="text-danger">*</span></label>
+            <input id="first" class="form-control" placeholder="Nama Depan" required>
+        </div>
+        <div class="mb-3">
+            <label for="last" class="form-label">Nama Belakang</label>
+            <input id="last" class="form-control" placeholder="Nama Belakang">
+        </div>
+        <div class="mb-3">
+            <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+            <input id="email" class="form-control" placeholder="Email" type="email" required>
+        </div>
+
+        <div class="mb-4">
+            <label for="apikey" class="form-label">API Key (Read Only)</label>
+            <input id="apikey" class="form-control" readonly placeholder="API Key">
+        </div>
+
+        <button id="btnGen" onclick="genKey()" class="btn btn-primary w-100 mb-2 py-2">
+            Generate API Key
+        </button>
+        <button id="btnSave" onclick="saveDB()" class="btn btn-success w-100 py-2">
+            Save to Database
+        </button>
+
+        <a href="/admin.html" class="mt-4 text-center d-block fw-semibold text-secondary">Admin Login</a>
+    </div>
+</div>
+
+<script>
+    /**
+     * Menampilkan alert (notifikasi) menggunakan elemen Bootstrap Alert.
+     * @param {string} message - Pesan yang akan ditampilkan.
+     * @param {string} type - Tipe alert (success, danger, warning).
+     */
+    function showAlert(message, type) {
+        const container = document.getElementById("alertContainer");
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show alert-fixed" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        
+        container.innerHTML = alertHtml;
+        
+        // Hilangkan alert setelah 5 detik
+        setTimeout(() => {
+            const currentAlert = container.querySelector('.alert');
+            if (currentAlert) {
+                // Gunakan fitur dismiss Bootstrap
+                const bsAlert = new bootstrap.Alert(currentAlert);
+                bsAlert.close();
+            }
+        }, 5000);
+    }
+
+    // Fungsi Generate Key yang lebih panjang dan unik
+    function genKey() {
+        // String acak yang lebih panjang (misalnya 10 karakter)
+        const randomString = Math.random().toString(36).substring(2, 12); 
+        // Timestamp saat ini untuk keunikan
+        const timestamp = Date.now().toString(36); 
+        
+        const key = "API-" + randomString.toUpperCase() + "-" + timestamp.toUpperCase();
+        document.getElementById("apikey").value = key;
+        
+        showAlert("✅ API Key berhasil digenerate!", "success");
+    }
+
+    async function saveDB() {
+        const firstName = document.getElementById("first").value.trim();
+        const lastName = document.getElementById("last").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const apikey = document.getElementById("apikey").value.trim();
+        const btn = document.getElementById("btnSave");
+
+        if (!firstName || !email) {
+            return showAlert("⚠️ Nama Depan dan Email wajib diisi.", "warning");
+        }
+
+        if (!apikey) {
+            return showAlert("⚠️ Generate API Key terlebih dahulu.", "warning");
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+
+        const data = {
+            first_name: firstName,
+            last_name: lastName,
+            email: email,
+            apikey: apikey
+        };
+
+        try {
+            // Perbaikan utama: route harus /users/create
+            const res = await fetch("/users/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            const response = await res.json();
+
+            if (response.error) {
+                showAlert("❌ Gagal menyimpan data: " + response.msg, "danger");
+            } else {
+                showAlert("🎉 API Key berhasil disimpan!", "success");
+
+                // Clear fields
+                document.getElementById("first").value = "";
+                document.getElementById("last").value = "";
+                document.getElementById("email").value = "";
+                document.getElementById("apikey").value = "";
+            }
+        } catch(e) {
+            showAlert("🚨 Server error / tidak bisa terhubung.", "danger");
+        }
+
+        btn.disabled = false;
+        btn.innerText = "Save to Database";
+    }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
